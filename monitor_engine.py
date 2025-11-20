@@ -192,8 +192,21 @@ def run_check():
         write_log("ERROR: sites_config.json missing.")
         return []
 
+# Ensure config always loads safely
+if not os.path.exists(CONFIG_FILE) or os.path.getsize(CONFIG_FILE) == 0:
+    with open(CONFIG_FILE, "w") as f:
+        json.dump([], f)
+
+try:
     with open(CONFIG_FILE) as f:
         sites = json.load(f)
+    if not isinstance(sites, list):
+        raise ValueError("Config must be a list")
+except Exception:
+    sites = []
+    with open(CONFIG_FILE, "w") as f:
+        json.dump([], f)
+
 
     results = []
 
