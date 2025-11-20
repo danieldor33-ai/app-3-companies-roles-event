@@ -2,17 +2,13 @@
 monitor_engine.py
 -----------------
 
-This module performs the core functionality of the website monitoring bot:
-
-1. Loads the list of sites + keywords from sites_config.json
-2. Downloads page HTML
-3. Extracts readable text
-4. Compares page content against the last saved snapshot
-5. Detects keyword-triggered changes
-6. Saves updated snapshots
-7. Writes all events to snapshots/log.txt
-
-It is designed to be called from a Streamlit app or a daily scheduled script.
+Core engine for monitoring websites:
+- Loads sites_config.json
+- Downloads pages
+- Extracts text
+- Compares with snapshots
+- Logs changes
+- Stores snapshots in /snapshots/
 """
 
 import os
@@ -24,27 +20,15 @@ from hashlib import md5
 from datetime import datetime
 
 # ------------------------------------------------------
-# Resolve paths based on the current file's real location
+# Correct, stable paths based on this file's location
 # ------------------------------------------------------
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))   
-SNAPSHOT_DIR = os.path.join(BASE_DIR, "snapshots")
-CONFIG_FILE = os.path.join(BASE_DIR, "sites_config.json")   # <— FIXED
-LOG_FILE = os.path.join(SNAPSHOT_DIR, "log.txt")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))           # /mount/src/app folder
+SNAPSHOT_DIR = os.path.join(BASE_DIR, "snapshots")              # /mount/src/app/snapshots
+CONFIG_FILE = os.path.join(BASE_DIR, "sites_config.json")       # /mount/src/app/sites_config.json
+LOG_FILE = os.path.join(SNAPSHOT_DIR, "log.txt")                # /mount/src/app/snapshots/log.txt
 
 # Ensure snapshot folder exists
-os.makedirs(SNAPSHOT_DIR, exist_ok=True)
-
-
-
-# Absolute path to your app directory
-APP_DIR = os.path.join(os.getcwd(), "app-3-companies-roles-event")
-
-# Snapshot + log directories INSIDE your app folder
-SNAPSHOT_DIR = os.path.join(APP_DIR, "snapshots")
-LOG_FILE = os.path.join(SNAPSHOT_DIR, "log.txt")
-
-# Ensure folder exists
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
 
@@ -54,10 +38,7 @@ os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
 def write_log(message):
     """
-    Appends a log entry to snapshots/log.txt
-
-    Args:
-        message (str): The text to write to the log.
+    Append a log entry to snapshots/log.txt
     """
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -70,13 +51,7 @@ def write_log(message):
 
 def fetch_html(url):
     """
-    Fetches the raw HTML of a webpage.
-
-    Args:
-        url (str): Website URL to fetch.
-
-    Returns:
-        str: The HTML content OR an "ERROR_FETCHING" message.
+    Downloads a webpage and returns HTML or error.
     """
     try:
         response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
@@ -88,13 +63,7 @@ def fetch_html(url):
 
 def extract_text(html):
     """
-    Extracts readable text from HTML using BeautifulSoup.
-
-    Args:
-        html (str): Raw HTML string.
-
-    Returns:
-        str: Clean extracted text.
+    Extract readable text only
     """
     soup = BeautifulSoup(html, "html.parser")
     return soup.get_text(separator="\n", strip=True)
@@ -106,28 +75,13 @@ def extract_text(html):
 
 def snapshot_path(url):
     """
-    Generates a consistent file path for storing a snapshot of a given URL.
-
-    Args:
-        url (str): URL to hash for filename.
-
-    Returns:
-        str: Path of snapshot file.
+    Snapshot file path using MD5 hash of URL
     """
     hashed = md5(url.encode()).hexdigest()
-    return f"{SNAPSHOT_DIR}/{hashed}.json"
+    return os.path.join(SNAPSHOT_DIR, f"{hashed}.json")
 
 
 def load_snapshot(url):
-    """
-    Loads the saved snapshot for a URL if it exists.
-
-    Args:
-        url (str): The monitored website URL.
-
-    Returns:
-        dict | None: Snapshot content or None if missing.
-    """
     path = snapshot_path(url)
     if os.path.exists(path):
         with open(path) as f:
@@ -136,13 +90,6 @@ def load_snapshot(url):
 
 
 def save_snapshot(url, text):
-    """
-    Saves the latest content of a webpage to a JSON snapshot file.
-
-    Args:
-        url (str): Website URL.
-        text (str): Clean extracted page text.
-    """
     path = snapshot_path(url)
     with open(path, "w") as f:
         json.dump({
@@ -156,61 +103,44 @@ def save_snapshot(url, text):
 # -------------------------------
 
 def keyword_match(text, keywords):
-    """
-    Checks which keywords appear in the given text.
-
-    Args:
-        text (str): Extracted page text.
-        keywords (list[str]): Words to search for.
-
-    Returns:
-        list[str]: The matched keywords.
-    """
     text_lower = text.lower()
     return [k for k in keywords if k.lower() in text_lower]
 
 
 # -------------------------------
-# MAIN ENGINE: run_check()
+# MAIN ENGINE
 # -------------------------------
 
 def run_check():
     """
-    Executes one full monitoring cycle:
-    - Loads the list of sites to monitor
-    - Checks each site's content
-    - Compares with previous snapshot
-    - Logs results
-    - Returns a summary list (for Streamlit)
-
-    Returns:
-        list[dict]: Summary of results for each URL.
+    Performs full monitoring cycle and returns a results list.
     """
 
-    # Load configuration file
-    if not os.path.exists(CONFIG_FILE):
-        write_log("ERROR: sites_config.json missing.")
-        return []
+    # ---------------------------
+    # 1. Ensure config file exists
+    # ---------------------------
+    if not os.path.exists(CONFIG_FILE) or os.path.getsize(CONFIG_FILE) == 0:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump([], f)
 
-# Ensure config always loads safely
-if not os.path.exists(CONFIG_FILE) or os.path.getsize(CONFIG_FILE) == 0:
-    with open(CONFIG_FILE, "w") as f:
-        json.dump([], f)
-
-try:
-    with open(CONFIG_FILE) as f:
-        sites = json.load(f)
-    if not isinstance(sites, list):
-        raise ValueError("Config must be a list")
-except Exception:
-    sites = []
-    with open(CONFIG_FILE, "w") as f:
-        json.dump([], f)
-
+    # ---------------------------
+    # 2. Load config safely
+    # ---------------------------
+    try:
+        with open(CONFIG_FILE) as f:
+            sites = json.load(f)
+        if not isinstance(sites, list):
+            raise ValueError("Config must be a list")
+    except Exception:
+        sites = []
+        with open(CONFIG_FILE, "w") as f:
+            json.dump([], f)
 
     results = []
 
-    # Iterate through configured sites
+    # ---------------------------
+    # 3. Process each site
+    # ---------------------------
     for site in sites:
         url = site["url"]
         keywords = site.get("keywords", [])
@@ -223,13 +153,10 @@ except Exception:
             results.append({"url": url, "status": "error", "details": html})
             continue
 
-        # Extract text
         text = extract_text(html)
-
-        # Load previous snapshot
         previous = load_snapshot(url)
 
-        # First-time initialization
+        # First time
         if previous is None:
             save_snapshot(url, text)
             msg = f"INIT | {url}"
@@ -237,14 +164,14 @@ except Exception:
             results.append({"url": url, "status": "initialized"})
             continue
 
-        # No change detected
+        # No change
         if text == previous["text"]:
             msg = f"NO CHANGE | {url}"
             write_log(msg)
             results.append({"url": url, "status": "no-change"})
             continue
 
-        # Changes detected → check for keyword matches
+        # Changed → check keywords
         matched = keyword_match(text, keywords)
 
         if matched:
