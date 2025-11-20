@@ -27,12 +27,14 @@ from datetime import datetime
 # Resolve paths based on the current file's real location
 # ------------------------------------------------------
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))   # /mount/src/app-3-companies-roles-event
-SNAPSHOT_DIR = os.path.join(BASE_DIR, "snapshots")      # /mount/src/app-3-companies-roles-event/snapshots
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))   
+SNAPSHOT_DIR = os.path.join(BASE_DIR, "snapshots")
+CONFIG_FILE = os.path.join(BASE_DIR, "sites_config.json")   # <— FIXED
 LOG_FILE = os.path.join(SNAPSHOT_DIR, "log.txt")
 
-# Create directory if missing
+# Ensure snapshot folder exists
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
+
 
 
 # Absolute path to your app directory
