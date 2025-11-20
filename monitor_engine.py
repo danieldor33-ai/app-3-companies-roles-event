@@ -35,6 +35,16 @@ LOG_FILE = f"{SNAPSHOT_DIR}/log.txt"
 # Create snapshots directory if missing
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
+# Absolute path to your app directory
+APP_DIR = os.path.join(os.getcwd(), "app-3-companies-roles-event")
+
+# Snapshot + log directories INSIDE your app folder
+SNAPSHOT_DIR = os.path.join(APP_DIR, "snapshots")
+LOG_FILE = os.path.join(SNAPSHOT_DIR, "log.txt")
+
+# Ensure folder exists
+os.makedirs(SNAPSHOT_DIR, exist_ok=True)
+
 
 # -------------------------------
 # Utility: Logging
