@@ -28,9 +28,9 @@ import time
 # Directories & File Definitions
 # -------------------------------
 
-SNAPSHOT_DIR = "snapshots"
+# SNAPSHOT_DIR = "snapshots"
 CONFIG_FILE = "sites_config.json"
-LOG_FILE = f"{SNAPSHOT_DIR}/log.txt"
+# LOG_FILE = f"{SNAPSHOT_DIR}/log.txt"
 
 # Create snapshots directory if missing
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
