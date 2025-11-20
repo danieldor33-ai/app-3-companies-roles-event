@@ -15,25 +15,25 @@ This module performs the core functionality of the website monitoring bot:
 It is designed to be called from a Streamlit app or a daily scheduled script.
 """
 
-import json
 import os
+import json
+import time
 import requests
 from bs4 import BeautifulSoup
 from hashlib import md5
 from datetime import datetime
-import time
 
+# ------------------------------------------------------
+# Resolve paths based on the current file's real location
+# ------------------------------------------------------
 
-# -------------------------------
-# Directories & File Definitions
-# -------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))   # /mount/src/app-3-companies-roles-event
+SNAPSHOT_DIR = os.path.join(BASE_DIR, "snapshots")      # /mount/src/app-3-companies-roles-event/snapshots
+LOG_FILE = os.path.join(SNAPSHOT_DIR, "log.txt")
 
-# SNAPSHOT_DIR = "snapshots"
-CONFIG_FILE = "sites_config.json"
-# LOG_FILE = f"{SNAPSHOT_DIR}/log.txt"
-
-# Create snapshots directory if missing
+# Create directory if missing
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
+
 
 # Absolute path to your app directory
 APP_DIR = os.path.join(os.getcwd(), "app-3-companies-roles-event")
