@@ -4,6 +4,8 @@ import requests
 from bs4 import BeautifulSoup
 from hashlib import md5
 from datetime import datetime
+import time
+
 
 SNAPSHOT_DIR = "snapshots"
 CONFIG_FILE = "sites_config.json"
@@ -51,45 +53,56 @@ def run_check():
 
     results = []
 
-    for site in sites:
-        url = site["url"]
-        keywords = site.get("keywords", [])
+for site in sites:
+    url = site["url"]
+    keywords = site.get("keywords", [])
 
-        html = fetch_html(url)
-        if html.startswith("ERROR_FETCHING"):
-            results.append({"url": url, "status": "error", "details": html})
-            continue
+    html = fetch_html(url)
+    if html.startswith("ERROR_FETCHING"):
+        msg = f"ERROR | {url} | {html}"
+        write_log(msg)
+        results.append({"url": url, "status": "error", "details": html})
+        continue
 
-        text = extract_text(html)
-        previous = load_snapshot(url)
+    text = extract_text(html)
+    previous = load_snapshot(url)
 
-        # First time checking
-        if previous is None:
-            save_snapshot(url, text)
-            results.append({"url": url, "status": "initialized"})
-            continue
-
-        # If no change → skip
-        if text == previous["text"]:
-            results.append({"url": url, "status": "no-change"})
-            continue
-
-        # If changed → check keywords
-        matched = keyword_match(text, keywords)
-
-        if matched:
-            results.append({
-                "url": url,
-                "status": "keyword-change",
-                "matched_keywords": matched
-            })
-        else:
-            results.append({
-                "url": url,
-                "status": "changed-but-no-keywords"
-            })
-
-        # Save new snapshot every time
+    # First time
+    if previous is None:
         save_snapshot(url, text)
+        msg = f"INIT | {url}"
+        write_log(msg)
+        results.append({"url": url, "status": "initialized"})
+        continue
 
-    return results
+    # No change
+    if text == previous["text"]:
+        msg = f"NO CHANGE | {url}"
+        write_log(msg)
+        results.append({"url": url, "status": "no-change"})
+        continue
+
+    # Changed → check keywords
+    matched = keyword_match(text, keywords)
+
+    if matched:
+        msg = f"KEYWORD CHANGE | {url} | keywords: {matched}"
+        write_log(msg)
+        results.append({
+            "url": url,
+            "status": "keyword-change",
+            "matched_keywords": matched
+        })
+    else:
+        msg = f"CHANGE BUT NO KEYWORDS | {url}"
+        write_log(msg)
+        results.append({"url": url, "status": "changed-but-no-keywords"})
+
+    save_snapshot(url, text)
+
+LOG_FILE = f"{SNAPSHOT_DIR}/log.txt"
+
+def write_log(message):
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(f"[{timestamp}] {message}\n")
