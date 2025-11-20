@@ -5,16 +5,24 @@ from monitor_engine import run_check
 
 CONFIG_FILE = "sites_config.json"
 
-st.title("Website Update Monitor (Basic Version)")
+# Ensure config file exists and is valid
+if not os.path.exists(CONFIG_FILE) or os.path.getsize(CONFIG_FILE) == 0:
+    # Create empty list config
+    with open(CONFIG_FILE, "w") as f:
+        json.dump([], f)
 
-# Load config
-if os.path.exists(CONFIG_FILE):
+# Safe-load config with fallback
+try:
     with open(CONFIG_FILE) as f:
         config = json.load(f)
-else:
+    if not isinstance(config, list):
+        raise ValueError("Config is not a list")
+except Exception:
+    # If invalid → reset to empty list
     config = []
+    with open(CONFIG_FILE, "w") as f:
+        json.dump([], f)
 
-st.subheader("Add New Site to Monitor")
 
 url = st.text_input("Site URL")
 keywords = st.text_input("Keywords (comma-separated)")
